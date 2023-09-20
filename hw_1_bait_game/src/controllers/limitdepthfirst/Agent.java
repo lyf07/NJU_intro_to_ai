@@ -1,24 +1,42 @@
-package controllers.depthfirst;
+package controllers.limitdepthfirst;
 
 import core.game.Observation;
 import core.game.StateObservation;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
+import tools.Vector2d;
 
 import javax.swing.plaf.nimbus.State;
 import java.awt.*;
-import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
 
+
 public class Agent extends controllers.sampleRandom.Agent{
 
     private LinkedList<StateObservation> searchedStates = null;
-    protected List<Types.ACTIONS> searchActionList = null;
+
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
     }
+
+    private int depth = 5;
+
+    private boolean hasKey = false;
+
+
+    private Vector2d goalpos;
+
+    private Vector2d keypos;
+
+    private Vector2d npcPosition;
+
+    private double minCost = 99999;
+
+    private LinkedList<Types.ACTIONS> bestActions = null;
+
+    private LinkedList<Types.ACTIONS> searchedActions = null;
 
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
 
@@ -29,23 +47,29 @@ public class Agent extends controllers.sampleRandom.Agent{
         ArrayList<Observation>[] resourcesPositions = stateObs.getResourcesPositions();
         ArrayList<Observation>[] portalPositions = stateObs.getPortalsPositions();
         grid = stateObs.getObservationGrid();
+        goalpos = fixedPositions[1].get(0).position; //目标的坐标
+        if (!hasKey) {
+            keypos = movingPositions[0].get(0).position;//钥匙的坐标
+        }
 
-        printDebug(npcPositions,"npc");
+
+        /*printDebug(npcPositions,"npc");
         printDebug(fixedPositions,"fix");
         printDebug(movingPositions,"mov");
         printDebug(resourcesPositions,"res");
         printDebug(portalPositions,"por");
-        System.out.println();
-
-        Types.ACTIONS action = null;
-        StateObservation stCopy = stateObs.copy();
-        if (searchActionList == null) {
-            searchActionList = depthFirstSearch(stCopy);
+        System.out.println();               */
+        bestActions = new LinkedList<Types.ACTIONS>();
+        searchedActions = new LinkedList<Types.ACTIONS>();
+        if (searchedStates == null) {
+            searchedStates = new LinkedList<StateObservation>();
         }
-        if (searchActionList.size() > 0) {
-            action = searchActionList.remove(0);
-        }
-        return action;
+        searchedStates.add(stateObs.copy());
+        limitDepthSearch(stateObs.copy(), depth);
+        minCost = 99999;
+        Types.ACTIONS ans = bestActions.getFirst();
+        bestActions.removeFirst();
+        return ans;
     }
 
 
@@ -62,7 +86,6 @@ public class Agent extends controllers.sampleRandom.Agent{
         }
         return false;
     }
-
     private List<Types.ACTIONS> depthFirstSearch(StateObservation stCopy) {
         if (searchedStates == null) {
             searchedStates = new LinkedList<StateObservation>();
@@ -92,6 +115,60 @@ public class Agent extends controllers.sampleRandom.Agent{
         return null;
     }
 
+    private void limitDepthSearch(StateObservation stateObs, int curDepth){
+        searchedStates.addLast(stateObs.copy());
+        for (Types.ACTIONS action : stateObs.copy().getAvailableActions()) {
+            StateObservation stCopy = stateObs.copy();
+            stCopy.advance(action);
+            npcPosition = stCopy.copy().getAvatarPosition();
+            hasKey = judge(npcPosition);
+            searchedActions.addLast(action);
+            if (curDepth == 0) {
+                double expect = heuristic(npcPosition);
+                if (expect < minCost) {
+                    minCost = expect;
+                    bestActions = (LinkedList<Types.ACTIONS>) searchedActions.clone();
+                }
+            }
+            else if (goal_test(stCopy.copy())) {
+                minCost = -1;
+                bestActions = (LinkedList<Types.ACTIONS>) searchedActions.clone();
+                return;
+            }
+            else if (!in_list(stCopy.copy())) {
+                limitDepthSearch(stCopy.copy(), curDepth - 1);
+            }
+            searchedActions.removeLast();
+        }
+        searchedStates.removeLast();
+
+
+    }
+
+    private boolean judge(Vector2d npc) {
+        for (StateObservation state : searchedStates) {
+            Vector2d curNpcPosition = state.copy().getAvatarPosition();
+            if (curNpcPosition.x == keypos.x && curNpcPosition.y == keypos.y)
+                return true;
+        }
+        return false;
+    }
+
+    private double heuristic(Vector2d npc){
+        if (hasKey) {
+            return Math.abs(npc.x - goalpos.x) + Math.abs(npc.y - goalpos.y);
+        }
+        else {
+            return Math.abs(npc.x - keypos.x) + Math.abs(npc.y - keypos.y) +
+                    Math.abs(goalpos.x - keypos.x) + Math.abs(goalpos.y - keypos.y);
+        }
+    }
+
+
+
+
+
+
     /**
      * Prints the number of different types of sprites available in the "positions" array.
      * Between brackets, the number of observations of each type.
@@ -104,7 +181,6 @@ public class Agent extends controllers.sampleRandom.Agent{
             System.out.print(str + ":" + positions.length + "(");
             for (int i = 0; i < positions.length; i++) {
                 System.out.print(positions[i].size() + ",");
-
             }
             System.out.print("); ");
         }else System.out.print(str + ": 0; ");
