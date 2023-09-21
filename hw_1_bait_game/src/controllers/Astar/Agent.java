@@ -1,4 +1,4 @@
-package controllers.limitdepthfirst;
+package controllers.Astar;
 
 import core.game.Observation;
 import core.game.StateObservation;
@@ -8,6 +8,7 @@ import tools.Vector2d;
 
 import javax.swing.plaf.nimbus.State;
 import java.awt.*;
+import java.util.PriorityQueue;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
@@ -15,13 +16,17 @@ import java.util.ArrayList;
 
 public class Agent extends controllers.sampleRandom.Agent{
 
+    private class Node {
+
+    }
+
     private LinkedList<StateObservation> searchedStates = null;
 
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
     }
 
-    private int depth = 8;
+    private int depth = 15;
 
     private boolean hasKey = false;
 
@@ -40,6 +45,7 @@ public class Agent extends controllers.sampleRandom.Agent{
 
     private LinkedList<Types.ACTIONS> storeActions = null;
 
+    private PriorityQueue<Node> searching = null;
 
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
 
@@ -70,12 +76,12 @@ public class Agent extends controllers.sampleRandom.Agent{
         if (storeActions == null) {
             storeActions = new LinkedList<Types.ACTIONS>();
         }
-        searchedStates.add(stateObs.copy());
-        limitDepthSearch(stateObs.copy(), depth);
-        minCost = 99999;
-        Types.ACTIONS ans = bestActions.getFirst();
-        bestActions.removeFirst();
-        storeActions.addLast(ans);
+        if (searching == null) {
+            searching = new PriorityQueue<Node>();
+        }
+
+
+        Types.ACTIONS ans = searching.poll();
         return ans;
     }
 
@@ -93,66 +99,17 @@ public class Agent extends controllers.sampleRandom.Agent{
         }
         return false;
     }
-    private List<Types.ACTIONS> depthFirstSearch(StateObservation stCopy) {
-        if (searchedStates == null) {
-            searchedStates = new LinkedList<StateObservation>();
-        }
-        LinkedList<Types.ACTIONS> searchedActions = new LinkedList<Types.ACTIONS>();
-        StateObservation myCopy = stCopy.copy();
-        ArrayList<Types.ACTIONS> actions = stCopy.getAvailableActions();
-        for (Types.ACTIONS action : actions) {
-            searchedActions.addLast(action);
-            searchedStates.addLast(myCopy.copy());
-            myCopy.advance(action);
-            if (goal_test(myCopy)) {
-                return searchedActions;
-            }
-            LinkedList<Types.ACTIONS> ans = null;
-            if (in_list(myCopy.copy()) ||  (ans = (LinkedList<Types.ACTIONS>)depthFirstSearch(myCopy.copy())) == null) {
-                searchedActions.removeLast();
-                myCopy = stCopy.copy();
-            }
-            else {
-                for (Types.ACTIONS rightAction: ans) {
-                    searchedActions.addLast(rightAction);
-                }
-                return searchedActions;
-            }
-        }
-        return null;
-    }
 
-    private void limitDepthSearch(StateObservation stateObs, int curDepth){
-        searchedStates.addLast(stateObs.copy());
-        for (Types.ACTIONS action : stateObs.copy().getAvailableActions()) {
-            StateObservation stCopy = stateObs.copy();
-            stCopy.advance(action);
-            npcPosition = stCopy.copy().getAvatarPosition();
-            hasKey = judge(npcPosition);
-            searchedActions.addLast(action);
-            if (curDepth == 0) {
-                double expect = heuristic(npcPosition);
-                if (expect < minCost) {
-                    minCost = expect;
-                    bestActions = (LinkedList<Types.ACTIONS>) searchedActions.clone();
-                }
-            }
-            else if (goal_test(stCopy.copy())) {
-                minCost = -1;
-                bestActions = (LinkedList<Types.ACTIONS>) searchedActions.clone();
-                return;
-            }
-            else if (!in_list(stCopy.copy())) {
-                limitDepthSearch(stCopy.copy(), curDepth - 1);
-            }
-            searchedActions.removeLast();
-        }
-        searchedStates.removeLast();
 
+
+    // For each time we only give one step
+    private void astarSearch(StateObservation stCopy){
 
     }
 
-    private boolean judge(Vector2d npc) {
+    // To judge whether we have gotten a key or not
+
+    private boolean judgeKey(Vector2d npc) {
         for (StateObservation state : searchedStates) {
             Vector2d curNpcPosition = state.copy().getAvatarPosition();
             if (curNpcPosition.x == keypos.x && curNpcPosition.y == keypos.y)
@@ -163,11 +120,11 @@ public class Agent extends controllers.sampleRandom.Agent{
 
     private double heuristic(Vector2d npc){
         if (hasKey) {
-            return Math.abs(npc.x - goalpos.x) + Math.abs(npc.y - goalpos.y);
+            return Math.abs(npc.x - goalpos.x) + Math.abs(npc.y - goalpos.y) + storeActions.size() * 50;
         }
         else {
             return Math.abs(npc.x - keypos.x) + Math.abs(npc.y - keypos.y) +
-                    Math.abs(goalpos.x - keypos.x) + Math.abs(goalpos.y - keypos.y);
+                    Math.abs(goalpos.x - keypos.x) + Math.abs(goalpos.y - keypos.y) + storeActions.size() * 50;
         }
     }
 
