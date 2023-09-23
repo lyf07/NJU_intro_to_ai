@@ -21,7 +21,7 @@ public class Agent extends controllers.sampleRandom.Agent{
         super(so, elapsedTimer);
     }
 
-    private int depth = 8;
+    private int depth = 5;
 
     private boolean hasKey = false;
 
