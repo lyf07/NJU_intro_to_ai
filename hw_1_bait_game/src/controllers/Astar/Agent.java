@@ -53,10 +53,14 @@ public class Agent extends controllers.sampleRandom.Agent{
                 return ans;
             }
             else {
+//                double ans = pastActions == null ? Math.abs(npc.x - keypos.x) + Math.abs(npc.y - keypos.y) +
+//                        Math.abs(goalpos.x - keypos.x) + Math.abs(goalpos.y - keypos.y):
+//                        Math.abs(npc.x - keypos.x) + Math.abs(npc.y - keypos.y) + Math.abs(goalpos.x - keypos.x)
+//                                + Math.abs(goalpos.y - keypos.y) + pastActions.size() * 50;
                 double ans = pastActions == null ? Math.abs(npc.x - keypos.x) + Math.abs(npc.y - keypos.y) +
-                        Math.abs(goalpos.x - keypos.x) + Math.abs(goalpos.y - keypos.y) :
+                        Math.abs(goalpos.x - keypos.x) + Math.abs(goalpos.y - keypos.y) + computeBoxHoles(getState()) * 0.2 + getState().getGameScore() * 10:
                         Math.abs(npc.x - keypos.x) + Math.abs(npc.y - keypos.y) + Math.abs(goalpos.x - keypos.x)
-                                + Math.abs(goalpos.y - keypos.y) + pastActions.size() * 50 ;
+                                + Math.abs(goalpos.y - keypos.y) + pastActions.size() * 50 + computeBoxHoles(getState()) * 0.2 + getState().getGameScore() * 10;
                 return ans;
             }
         }
@@ -195,16 +199,23 @@ public class Agent extends controllers.sampleRandom.Agent{
                 ret = cur.pastActions;
                 break;
             }
-            if (cur.pastActions != null && cur.pastActions.size() == depth ) {          // 达到深度后直接返回，注意，此时是删除元素的
+            if (cur.pastActions != null && cur.pastActions.size() == depth ) {
+//                if (cur.pastActions.get(1).name() == "ACTION_DOWN")// 达到深度后直接返回，注意，此时是删除元素的
+//                    System.out.println("here");
                 ret = cur.pastActions;
                 searching.add(cur);
-                if (step == cur.pastActions.size() - 1) {
+                if (step == cur.pastActions.size() / 3) {
                     searching = null;
                 }
+//                if (step == cur.pastActions.size() - 1) {
+//                    searching = null;
+//                }
                 break;
             }
             for (Types.ACTIONS action : cur.sto.copy().getAvailableActions()) {
                 cnt4++;
+//                if (cur.pastActions != null && cur.pastActions.size() >=2 &&  cur.pastActions.get(0).name() == "ACTION_LEFT" && cur.pastActions.get(1).name() == "ACTION_DOWN")// 达到深度后直接返回，注意，此时是删除元素的
+//                    System.out.println("here");
                 StateObservation nxt = cur.sto.copy();
                 StateObservation check = nxt.copy();
                 check.advance(action);
